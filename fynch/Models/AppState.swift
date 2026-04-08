@@ -7,6 +7,19 @@ final class AppState {
     var watchedStates: [String: Bool] = PersistenceService.loadWatchedStates()
     var isAddingShow: Bool = false
     var isRefreshing: Bool = false
+    var isLoggedIn: Bool = false
+
+    // MARK: - Auth
+
+    func login(username: String, password: String) -> Bool {
+        guard username == "arya", password == "password" else { return false }
+        isLoggedIn = true
+        return true
+    }
+
+    func logout() {
+        isLoggedIn = false
+    }
 
     // MARK: - Key
 
