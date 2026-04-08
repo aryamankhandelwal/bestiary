@@ -13,6 +13,7 @@ struct HomeView: View {
     @State private var sortOrder: ShowSortOrder = .default
 
     let tmdbService: TMDBService
+    let refreshService: RefreshService
 
     private var sortedShows: [Show] {
         switch sortOrder {
@@ -61,6 +62,13 @@ struct HomeView: View {
                                 }
                             }
                         }
+                    }
+                    .refreshable {
+                        await appState.refreshAllShows(
+                            service: tmdbService,
+                            refreshService: refreshService,
+                            isManual: true
+                        )
                     }
                 }
             }

@@ -94,7 +94,9 @@ actor TMDBService {
             posterColor: Show.palette[colorIndex],
             colorIndex: colorIndex,
             genres: showDetail.genres.map(\.name),
-            seasons: seasons
+            seasons: seasons,
+            tmdbStatus: showDetail.status,
+            lastRefreshedAt: Date()
         )
     }
 

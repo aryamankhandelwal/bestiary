@@ -20,6 +20,7 @@ struct TMDBShowDetail: Decodable {
     let name: String
     let numberOfSeasons: Int
     let genres: [TMDBGenre]
+    let status: String?
 }
 
 struct TMDBGenre: Decodable {

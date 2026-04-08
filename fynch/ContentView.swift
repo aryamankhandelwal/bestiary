@@ -9,13 +9,17 @@ import SwiftUI
 
 struct ContentView: View {
     let tmdbService: TMDBService
+    let refreshService: RefreshService
 
     var body: some View {
-        HomeView(tmdbService: tmdbService)
+        HomeView(tmdbService: tmdbService, refreshService: refreshService)
     }
 }
 
 #Preview {
-    ContentView(tmdbService: TMDBService(bearerToken: ""))
-        .environment(AppState())
+    ContentView(
+        tmdbService: TMDBService(bearerToken: ""),
+        refreshService: RefreshService()
+    )
+    .environment(AppState())
 }
