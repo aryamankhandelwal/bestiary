@@ -11,7 +11,8 @@ struct HomeView: View {
                     NavigationLink(value: show) {
                         ShowRowView(
                             show: show,
-                            isCompleted: appState.isCompleted(show)
+                            isCompleted: appState.isCompleted(show),
+                            statusLabel: appState.statusLabel(for: show)
                         )
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -24,6 +25,7 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("fynch")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Show.self) { show in
                 ShowDetailView(show: show)
             }

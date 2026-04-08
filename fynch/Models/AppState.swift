@@ -33,6 +33,23 @@ final class AppState {
         nextEpisode(for: show) == nil
     }
 
+    func episodesRemaining(for show: Show) -> Int {
+        show.seasons.reduce(0) { total, season in
+            total + season.episodes.filter {
+                !isWatched(showId: show.id, season: season.seasonNumber, episode: $0.episodeNumber)
+            }.count
+        }
+    }
+
+    func statusLabel(for show: Show) -> String {
+        let remaining = episodesRemaining(for: show)
+        switch remaining {
+        case 0: return "Caught up"
+        case 1: return "1 new episode"
+        default: return "\(remaining) new episodes"
+        }
+    }
+
     // MARK: - Mutations
 
     func toggleWatched(showId: String, season: Int, episode: Int) {
@@ -69,9 +86,9 @@ final class AppState {
     private static func makeSampleWatchedStates() -> [String: Bool] {
         var states: [String: Bool] = [:]
 
-        // Breaking Bad: S1 fully done, S2E1–E5 done
+        // Breaking Bad: fully watched (all caught up)
         for ep in 1...8 { states[watchKey(showId: "breaking-bad", season: 1, episode: ep)] = true }
-        for ep in 1...5 { states[watchKey(showId: "breaking-bad", season: 2, episode: ep)] = true }
+        for ep in 1...8 { states[watchKey(showId: "breaking-bad", season: 2, episode: ep)] = true }
 
         // Severance: S1 fully done, S2 not started
         for ep in 1...9 { states[watchKey(showId: "severance", season: 1, episode: ep)] = true }

@@ -3,17 +3,32 @@ import SwiftUI
 struct ShowRowView: View {
     let show: Show
     let isCompleted: Bool
+    let statusLabel: String
 
     var body: some View {
         HStack(spacing: 14) {
             avatarView
 
-            Text(show.title)
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(show.title)
+                    .font(.headline)
+
+                Text(statusLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(isCompleted ? .secondary : show.posterColor)
+            }
 
             Spacer()
+
+            if !isCompleted {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 8, height: 8)
+                    .transition(.scale.combined(with: .opacity))
+            }
         }
         .padding(.vertical, 4)
+        .animation(.easeInOut(duration: 0.3), value: isCompleted)
     }
 
     private var avatarView: some View {
