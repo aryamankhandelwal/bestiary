@@ -15,6 +15,18 @@ struct ProfileView: View {
                         appState.signOut()
                     }
                 }
+
+                // #if DEBUG
+                // if let show = appState.shows.first {
+                //     Section("Debug") {
+                //         Button("Test Notification (\(show.title))") {
+                //             Task {
+                //                 await NotificationService.shared.scheduleTestNotification(for: show)
+                //             }
+                //         }
+                //     }
+                // }
+                // #endif
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)

@@ -9,6 +9,7 @@ enum ShowSortOrder: String, CaseIterable {
 
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @State private var navigationPath = NavigationPath()
     @State private var showingAddSheet = false
     @State private var sortOrder: ShowSortOrder = .default
 
@@ -36,7 +37,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if appState.shows.isEmpty {
                     ContentUnavailableView(
@@ -110,6 +111,13 @@ struct HomeView: View {
                 AddShowView(tmdbService: tmdbService)
             }
             .animation(.easeInOut, value: appState.shows.map(\.id))
+            .onChange(of: appState.pendingDeepLinkShowId) { _, newId in
+                guard let id = newId,
+                      let show = appState.shows.first(where: { $0.id == id })
+                else { return }
+                navigationPath.append(show)
+                appState.pendingDeepLinkShowId = nil
+            }
         }
     }
 }

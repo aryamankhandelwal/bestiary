@@ -7,6 +7,7 @@
 
 import SwiftUI
 import BackgroundTasks
+import UserNotifications
 
 @main
 struct fynchApp: App {
@@ -14,6 +15,7 @@ struct fynchApp: App {
     private let cloudService: CloudSyncService
     private let tmdbService: TMDBService
     private let refreshService: RefreshService
+    private let notificationDelegate: NotificationDelegate
     @State private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
 
@@ -24,7 +26,11 @@ struct fynchApp: App {
         cloudService   = cloud
         tmdbService    = TMDBService(bearerToken: Secrets.tmdbBearerToken)
         refreshService = RefreshService()
-        _appState      = State(wrappedValue: AppState(authService: auth, cloudService: cloud))
+        let state = AppState(authService: auth, cloudService: cloud)
+        _appState = State(wrappedValue: state)
+        let delegate = NotificationDelegate(appState: state)
+        notificationDelegate = delegate
+        UNUserNotificationCenter.current().delegate = delegate
     }
 
     var body: some Scene {
@@ -73,5 +79,38 @@ struct fynchApp: App {
         let request = BGAppRefreshTaskRequest(identifier: "com.fynch.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 86_400)
         try? BGTaskScheduler.shared.submit(request)
+    }
+}
+
+// MARK: - Notification Delegate
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    private weak var appState: AppState?
+
+    init(appState: AppState) {
+        self.appState = appState
+    }
+
+    // Show banner + play sound even when the app is foregrounded
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    // Handle tap: extract showId and set pending deep link
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let showId = response.notification.request.content.userInfo["showId"] as? String {
+            Task { @MainActor in
+                self.appState?.pendingDeepLinkShowId = showId
+            }
+        }
+        completionHandler()
     }
 }

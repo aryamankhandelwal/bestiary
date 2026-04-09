@@ -12,8 +12,11 @@ final class AppState {
 
     var isLoggedIn: Bool { currentUser != nil }
 
+    var pendingDeepLinkShowId: String? = nil
+
     @ObservationIgnored private let authService: AuthService
     @ObservationIgnored private let cloudService: CloudSyncService
+    @ObservationIgnored private let notificationService = NotificationService.shared
 
     init(authService: AuthService, cloudService: CloudSyncService) {
         self.authService  = authService
@@ -195,6 +198,8 @@ final class AppState {
         let userId  = session.userId
         let idToken = session.idToken
         Task { try? await cloudService.saveShow(show, userId: userId, idToken: idToken) }
+        let currentShows = shows
+        Task { await notificationService.scheduleEpisodeNotifications(for: currentShows) }
     }
 
     func markSeasonWatched(showId: String, season: Season) {
@@ -268,6 +273,11 @@ final class AppState {
         let userId  = session.userId
         let idToken = session.idToken
         Task { try? await cloudService.deleteShow(showId: id, userId: userId, idToken: idToken) }
+        let currentShows = shows
+        Task {
+            await notificationService.cancelNotifications(forShowId: id)
+            await notificationService.scheduleEpisodeNotifications(for: currentShows)
+        }
     }
 
     // MARK: - TMDB
@@ -299,6 +309,8 @@ final class AppState {
                 shows[idx] = updatedShow
             }
         }
+        let currentShows = shows
+        Task { await notificationService.scheduleEpisodeNotifications(for: currentShows) }
         guard !result.updatedShows.isEmpty else { return }
         guard let session = currentUser else { return }
         PersistenceService.saveShows(shows, userId: session.userId)

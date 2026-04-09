@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @State private var selectedTab = 0
     let tmdbService: TMDBService
     let refreshService: RefreshService
 
@@ -17,13 +18,18 @@ struct ContentView: View {
             if appState.isRestoringSession {
                 Color(.systemBackground).ignoresSafeArea()
             } else if appState.isLoggedIn {
-                TabView {
+                TabView(selection: $selectedTab) {
                     HomeView(tmdbService: tmdbService, refreshService: refreshService)
                         .tabItem { Label("My List", systemImage: "tv") }
+                        .tag(0)
                     ProfileView()
                         .tabItem { Label("Profile", systemImage: "person.circle") }
+                        .tag(1)
                 }
                 .transition(.opacity)
+                .onChange(of: appState.pendingDeepLinkShowId) { _, newId in
+                    if newId != nil { selectedTab = 0 }
+                }
             } else {
                 LoginView()
                     .transition(.opacity)
