@@ -103,10 +103,19 @@ final class AppState {
         return f
     }()
 
+    // Formats today's date as "yyyy-MM-dd" in local timezone for comparison
+    private static let localDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     static func isAired(_ airDate: String?) -> Bool {
         guard let iso = airDate, !iso.isEmpty else { return true }
-        guard let date = airDateFormatter.date(from: iso) else { return true }
-        return date <= Date()
+        // Compare YYYY-MM-DD strings in local timezone so an episode airing
+        // "today" (local date) is not treated as aired the evening before.
+        let todayString = localDateFormatter.string(from: Date())
+        return iso <= todayString
     }
 
     // MARK: - Queries
