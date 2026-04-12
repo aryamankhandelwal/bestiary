@@ -101,7 +101,7 @@ struct HomeView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "line.3.horizontal")
+                        Image(systemName: "line.3.horizontal.decrease.circle")
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
