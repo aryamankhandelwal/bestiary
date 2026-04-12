@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var navigationPath = NavigationPath()
     @State private var showingAddSheet = false
     @State private var sortOrder: ShowSortOrder = .default
+    @State private var trayExpanded = false
 
     let tmdbService: TMDBService
     let refreshService: RefreshService
@@ -63,6 +64,9 @@ struct HomeView: View {
                                 }
                             }
                         }
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: CalendarTrayView.handleBarHeight)
                     }
                     .refreshable {
                         await appState.refreshAllShows(
@@ -118,6 +122,9 @@ struct HomeView: View {
                 navigationPath.append(show)
                 appState.pendingDeepLinkShowId = nil
             }
+        }
+        .overlay(alignment: .bottom) {
+            CalendarTrayView(isExpanded: $trayExpanded)
         }
     }
 }

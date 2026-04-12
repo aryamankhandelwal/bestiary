@@ -187,6 +187,20 @@ final class AppState {
         return fmt.string(from: date)
     }
 
+    // MARK: - Calendar
+
+    func allAiringDates() -> Set<String> {
+        var result = Set<String>()
+        for show in shows {
+            for season in show.seasons {
+                for episode in season.episodes {
+                    if let d = episode.airDate, !d.isEmpty { result.insert(d) }
+                }
+            }
+        }
+        return result
+    }
+
     // MARK: - Mutations
 
     func toggleWatched(showId: String, season: Int, episode: Int) {
