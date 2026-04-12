@@ -44,7 +44,7 @@ struct ShowDetailView: View {
                             episode: first,
                             isWatched: false,
                             isNext: false,
-                            isNextUnaired: first.id == nextUnairedId,
+                            isNextUnaired: first.id == nextUnairedId && appState.isCompleted(show),
                             onTap: {}
                         )
 

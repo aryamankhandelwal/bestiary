@@ -24,7 +24,7 @@ struct EpisodeRowView: View {
                         Text(dateString)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        if isNextUnaired {
+                        if isNext || isNextUnaired {
                             Text("Up Next")
                                 .font(.caption2.bold())
                                 .foregroundStyle(.blue)

@@ -168,13 +168,23 @@ final class AppState {
     func statusLabel(for show: Show) -> String {
         let remaining = episodesRemaining(for: show)
         if remaining == 0 {
-            let unaired = unairedEpisodesCount(for: show)
-            if unaired > 0 {
-                return "Caught up · \(unaired) left in season"
+            if let next = nextUnairedEpisode(for: show) {
+                let dateStr = next.airDate.flatMap { Self.formatShortDate($0) } ?? "soon"
+                return "Up Next Airing \(dateStr)"
             }
             return "Caught up"
         }
         return remaining == 1 ? "1 new episode" : "\(remaining) new episodes"
+    }
+
+    private static func formatShortDate(_ iso: String) -> String? {
+        let parser = DateFormatter()
+        parser.dateFormat = "yyyy-MM-dd"
+        parser.timeZone = TimeZone(identifier: "UTC")
+        guard let date = parser.date(from: iso) else { return nil }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM d, yyyy"
+        return fmt.string(from: date)
     }
 
     // MARK: - Mutations
