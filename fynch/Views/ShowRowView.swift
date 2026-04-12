@@ -4,14 +4,22 @@ struct ShowRowView: View {
     let show: Show
     let isCompleted: Bool
     let statusLabel: String
+    var nextAirDate: String? = nil
 
     var body: some View {
         HStack(spacing: 14) {
             avatarView
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(show.title)
-                    .font(.headline)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(show.title)
+                        .font(.headline)
+                    if let airDate = nextAirDate {
+                        Text(airDate)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 Text(statusLabel)
                     .font(.subheadline)

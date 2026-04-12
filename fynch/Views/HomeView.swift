@@ -53,7 +53,8 @@ struct HomeView: View {
                                 ShowRowView(
                                     show: show,
                                     isCompleted: appState.isCompleted(show),
-                                    statusLabel: appState.statusLabel(for: show)
+                                    statusLabel: appState.statusLabel(for: show),
+                                    nextAirDate: appState.nextAirDateLabel(for: show)
                                 )
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
