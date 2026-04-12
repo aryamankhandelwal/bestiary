@@ -17,6 +17,7 @@ struct AddShowView: View {
     @State private var searchState: SearchState = .idle
     @State private var searchTask: Task<Void, Never>? = nil
     @State private var addingShowId: Int? = nil
+    @State private var showingBulkAdd: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -58,6 +59,16 @@ struct AddShowView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingBulkAdd = true
+                    } label: {
+                        Text("Bulk Add")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingBulkAdd) {
+                BulkAddView(tmdbService: tmdbService, onAdded: { dismiss() })
             }
         }
     }

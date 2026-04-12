@@ -319,6 +319,21 @@ final class AppState {
         addShow(show)
     }
 
+    @MainActor
+    func addShowsFromTMDB(searchResults: [TMDBSearchResult], service: TMDBService) async throws {
+        try await withThrowingTaskGroup(of: Show.self) { group in
+            for result in searchResults {
+                group.addTask {
+                    let detail = try await service.fetchShowDetail(id: result.id)
+                    return try await service.buildShow(from: detail)
+                }
+            }
+            for try await show in group {
+                addShow(show)
+            }
+        }
+    }
+
     // MARK: - Refresh
 
     @MainActor
