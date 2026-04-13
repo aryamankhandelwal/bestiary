@@ -5,6 +5,10 @@ import Observation
 final class AppState {
     var shows: [Show] = []
     var watchedStates: [String: Bool] = [:]
+    var watchlistedShowIds: Set<String> = []
+
+    var myListShows: [Show]   { shows.filter { !watchlistedShowIds.contains($0.id) } }
+    var watchlistShows: [Show] { shows.filter {  watchlistedShowIds.contains($0.id) } }
     var isAddingShow: Bool = false
     var isRefreshing: Bool = false
     var isRestoringSession: Bool = true
@@ -59,10 +63,11 @@ final class AppState {
     /// Called on launch when a saved Keychain session is found.
     @MainActor
     func restoreSession(_ session: AuthSession) {
-        currentUser   = session
+        currentUser        = session
         KeychainService.save(session)
-        shows         = PersistenceService.loadShows(userId: session.userId)
-        watchedStates = PersistenceService.loadWatchedStates(userId: session.userId)
+        shows              = PersistenceService.loadShows(userId: session.userId)
+        watchedStates      = PersistenceService.loadWatchedStates(userId: session.userId)
+        watchlistedShowIds = PersistenceService.loadWatchlistedIds(userId: session.userId)
     }
 
     /// Fetches fresh data from Firestore and merges into local state.
@@ -70,13 +75,16 @@ final class AppState {
     func loadUserData() async {
         guard let session = currentUser else { return }
         do {
-            async let cloudShows  = cloudService.loadShows(userId: session.userId, idToken: session.idToken)
-            async let cloudStates = cloudService.loadWatchedStates(userId: session.userId, idToken: session.idToken)
-            let (fetchedShows, fetchedStates) = try await (cloudShows, cloudStates)
-            shows         = fetchedShows
-            watchedStates = fetchedStates
+            async let cloudShows   = cloudService.loadShows(userId: session.userId, idToken: session.idToken)
+            async let cloudStates  = cloudService.loadWatchedStates(userId: session.userId, idToken: session.idToken)
+            async let cloudIds     = cloudService.loadWatchlistedIds(userId: session.userId, idToken: session.idToken)
+            let (fetchedShows, fetchedStates, fetchedIds) = try await (cloudShows, cloudStates, cloudIds)
+            shows              = fetchedShows
+            watchedStates      = fetchedStates
+            watchlistedShowIds = fetchedIds
             PersistenceService.saveShows(fetchedShows, userId: session.userId)
             PersistenceService.saveWatchedStates(fetchedStates, userId: session.userId)
+            PersistenceService.saveWatchlistedIds(fetchedIds, userId: session.userId)
         } catch {
             #if DEBUG
             print("[fynch] loadUserData error: \(error)")
@@ -85,9 +93,10 @@ final class AppState {
     }
 
     func signOut() {
-        shows         = []
-        watchedStates = [:]
-        currentUser   = nil
+        shows              = []
+        watchedStates      = [:]
+        watchlistedShowIds = []
+        currentUser        = nil
         KeychainService.delete()
     }
 
@@ -230,6 +239,32 @@ final class AppState {
         Task { await notificationService.scheduleEpisodeNotifications(for: currentShows) }
     }
 
+    func addToWatchlist(_ show: Show) {
+        guard !shows.contains(where: { $0.id == show.id }) else { return }
+        shows.append(show)
+        watchlistedShowIds.insert(show.id)
+        guard let session = currentUser else { return }
+        PersistenceService.saveShows(shows, userId: session.userId)
+        PersistenceService.saveWatchlistedIds(watchlistedShowIds, userId: session.userId)
+        let ids     = watchlistedShowIds
+        let userId  = session.userId
+        let idToken = session.idToken
+        Task {
+            try? await cloudService.saveShow(show, userId: userId, idToken: idToken)
+            try? await cloudService.saveWatchlistedIds(ids, userId: userId, idToken: idToken)
+        }
+    }
+
+    func moveToMyList(showId: String) {
+        watchlistedShowIds.remove(showId)
+        guard let session = currentUser else { return }
+        PersistenceService.saveWatchlistedIds(watchlistedShowIds, userId: session.userId)
+        let ids     = watchlistedShowIds
+        let userId  = session.userId
+        let idToken = session.idToken
+        Task { try? await cloudService.saveWatchlistedIds(ids, userId: userId, idToken: idToken) }
+    }
+
     func markSeasonWatched(showId: String, season: Season) {
         for ep in season.episodes {
             watchedStates[AppState.watchKey(showId: showId, season: season.seasonNumber, episode: ep.episodeNumber)] = true
@@ -295,12 +330,18 @@ final class AppState {
     func deleteShow(id: String) {
         shows.removeAll { $0.id == id }
         watchedStates = watchedStates.filter { !$0.key.hasPrefix(id + "-") }
+        watchlistedShowIds.remove(id)
         guard let session = currentUser else { return }
         PersistenceService.saveShows(shows, userId: session.userId)
         PersistenceService.saveWatchedStates(watchedStates, userId: session.userId)
+        PersistenceService.saveWatchlistedIds(watchlistedShowIds, userId: session.userId)
+        let ids     = watchlistedShowIds
         let userId  = session.userId
         let idToken = session.idToken
-        Task { try? await cloudService.deleteShow(showId: id, userId: userId, idToken: idToken) }
+        Task {
+            try? await cloudService.deleteShow(showId: id, userId: userId, idToken: idToken)
+            try? await cloudService.saveWatchlistedIds(ids, userId: userId, idToken: idToken)
+        }
         let currentShows = shows
         Task {
             await notificationService.cancelNotifications(forShowId: id)
@@ -311,16 +352,19 @@ final class AppState {
     // MARK: - TMDB
 
     @MainActor
-    func addShowFromTMDB(searchResult: TMDBSearchResult, service: TMDBService) async throws {
+    func addShowFromTMDB(searchResult: TMDBSearchResult, service: TMDBService, destination: AddDestination) async throws {
         isAddingShow = true
         defer { isAddingShow = false }
         let detail = try await service.fetchShowDetail(id: searchResult.id)
         let show   = try await service.buildShow(from: detail)
-        addShow(show)
+        switch destination {
+        case .myList:    addShow(show)
+        case .watchlist: addToWatchlist(show)
+        }
     }
 
     @MainActor
-    func addShowsFromTMDB(searchResults: [TMDBSearchResult], service: TMDBService) async throws {
+    func addShowsFromTMDB(searchResults: [TMDBSearchResult], service: TMDBService, destination: AddDestination) async throws {
         try await withThrowingTaskGroup(of: Show.self) { group in
             for result in searchResults {
                 group.addTask {
@@ -329,7 +373,10 @@ final class AppState {
                 }
             }
             for try await show in group {
-                addShow(show)
+                switch destination {
+                case .myList:    self.addShow(show)
+                case .watchlist: self.addToWatchlist(show)
+                }
             }
         }
     }

@@ -134,6 +134,8 @@ struct CalendarTrayView: View {
         let total = leading + days
         let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
+        let todayISO = Self.cellFormatter.string(from: Date())
+
         return LazyVGrid(columns: columns, spacing: 4) {
             ForEach(0..<total, id: \.self) { i in
                 if i < leading {
@@ -145,16 +147,25 @@ struct CalendarTrayView: View {
                     let date = self.date(day: day)
                     let iso = date.map { Self.cellFormatter.string(from: $0) } ?? ""
                     let isAiring = !iso.isEmpty && airingDates.contains(iso)
+                    let isPast = iso < todayISO
 
                     ZStack {
                         if isAiring {
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 22, height: 22)
+                            if isPast {
+                                Circle()
+                                    .stroke(Color.accentColor, lineWidth: 1.5)
+                                    .frame(width: 22, height: 22)
+                            } else {
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 22, height: 22)
+                            }
                         }
                         Text("\(day)")
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(isAiring ? .white : .primary)
+                            .foregroundStyle(
+                                isAiring ? (isPast ? Color.accentColor : .white) : .primary
+                            )
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 28)

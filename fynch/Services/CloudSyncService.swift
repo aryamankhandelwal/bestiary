@@ -83,6 +83,34 @@ actor CloudSyncService {
         try await patch(url: url, jsonString: jsonString, idToken: idToken)
     }
 
+    // MARK: - Watchlisted IDs
+
+    func loadWatchlistedIds(userId: String, idToken: String) async throws -> Set<String> {
+        let url = URL(string: "\(base)/users/\(userId)/watchlistedIds/ids")!
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        let http = response as! HTTPURLResponse
+        if http.statusCode == 404 { return [] }
+        guard http.statusCode == 200 else { throw CloudError.serverError(http.statusCode) }
+
+        let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        guard let fields    = json["fields"]           as? [String: Any],
+              let dataField  = fields["data"]           as? [String: Any],
+              let jsonStr    = dataField["stringValue"] as? String,
+              let jsonData   = jsonStr.data(using: .utf8),
+              let ids        = try? decoder.decode([String].self, from: jsonData)
+        else { return [] }
+        return Set(ids)
+    }
+
+    func saveWatchlistedIds(_ ids: Set<String>, userId: String, idToken: String) async throws {
+        guard let jsonString = encode(Array(ids)) else { return }
+        let url = URL(string: "\(base)/users/\(userId)/watchlistedIds/ids")!
+        try await patch(url: url, jsonString: jsonString, idToken: idToken)
+    }
+
     // MARK: - Migration
 
     func migrateData(shows: [Show], watchedStates: [String: Bool], userId: String, idToken: String) async throws {

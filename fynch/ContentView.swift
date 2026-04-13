@@ -22,9 +22,12 @@ struct ContentView: View {
                     HomeView(tmdbService: tmdbService, refreshService: refreshService)
                         .tabItem { Label("My List", systemImage: "tv") }
                         .tag(0)
+                    WatchlistView(tmdbService: tmdbService)
+                        .tabItem { Label("Watchlist", systemImage: "bookmark") }
+                        .tag(1)
                     ProfileView()
                         .tabItem { Label("Profile", systemImage: "person.circle") }
-                        .tag(1)
+                        .tag(2)
                 }
                 .transition(.opacity)
                 .onChange(of: appState.pendingDeepLinkShowId) { _, newId in

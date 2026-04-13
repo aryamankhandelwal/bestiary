@@ -12,7 +12,7 @@ struct HomeView: View {
     @State private var navigationPath = NavigationPath()
     @State private var showingAddSheet = false
     @State private var sortOrder: ShowSortOrder = .default
-    @State private var trayExpanded = false
+    // @State private var trayExpanded = false  // TODO: MVP — calendar tray disabled
 
     let tmdbService: TMDBService
     let refreshService: RefreshService
@@ -20,15 +20,15 @@ struct HomeView: View {
     private var sortedShows: [Show] {
         switch sortOrder {
         case .default:
-            return appState.shows
+            return appState.myListShows
         case .alphabetical:
-            return appState.shows.sorted { $0.title < $1.title }
+            return appState.myListShows.sorted { $0.title < $1.title }
         case .mostToWatch:
-            return appState.shows.sorted {
+            return appState.myListShows.sorted {
                 appState.episodesRemaining(for: $0) > appState.episodesRemaining(for: $1)
             }
         case .caughtUpLast:
-            return appState.shows.sorted {
+            return appState.myListShows.sorted {
                 let lhsDone = appState.isCompleted($0)
                 let rhsDone = appState.isCompleted($1)
                 if lhsDone == rhsDone { return false }
@@ -40,7 +40,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             Group {
-                if appState.shows.isEmpty {
+                if appState.myListShows.isEmpty {
                     ContentUnavailableView(
                         "No shows yet",
                         systemImage: "tv",
@@ -66,9 +66,9 @@ struct HomeView: View {
                             }
                         }
                     }
-                    .safeAreaInset(edge: .bottom) {
-                        Color.clear.frame(height: CalendarTrayView.handleBarHeight)
-                    }
+                    // .safeAreaInset(edge: .bottom) {  // TODO: MVP — calendar tray disabled
+                    //     Color.clear.frame(height: CalendarTrayView.handleBarHeight)
+                    // }
                     .refreshable {
                         await appState.refreshAllShows(
                             service: tmdbService,
@@ -113,9 +113,9 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
-                AddShowView(tmdbService: tmdbService)
+                AddShowView(tmdbService: tmdbService, destination: .myList)
             }
-            .animation(.easeInOut, value: appState.shows.map(\.id))
+            .animation(.easeInOut, value: appState.myListShows.map(\.id))
             .onChange(of: appState.pendingDeepLinkShowId) { _, newId in
                 guard let id = newId,
                       let show = appState.shows.first(where: { $0.id == id })
@@ -124,8 +124,8 @@ struct HomeView: View {
                 appState.pendingDeepLinkShowId = nil
             }
         }
-        .overlay(alignment: .bottom) {
-            CalendarTrayView(isExpanded: $trayExpanded)
-        }
+        // .overlay(alignment: .bottom) {  // TODO: MVP — calendar tray disabled
+        //     CalendarTrayView(isExpanded: $trayExpanded)
+        // }
     }
 }

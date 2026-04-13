@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum AddDestination {
+    case myList
+    case watchlist
+}
+
 private enum SearchState {
     case idle
     case loading
@@ -12,6 +17,7 @@ struct AddShowView: View {
     @Environment(\.dismiss) private var dismiss
 
     let tmdbService: TMDBService
+    let destination: AddDestination
 
     @State private var query: String = ""
     @State private var searchState: SearchState = .idle
@@ -68,7 +74,7 @@ struct AddShowView: View {
                 }
             }
             .sheet(isPresented: $showingBulkAdd) {
-                BulkAddView(tmdbService: tmdbService, onAdded: { dismiss() })
+                BulkAddView(tmdbService: tmdbService, destination: destination, onAdded: { dismiss() })
             }
         }
     }
@@ -140,7 +146,7 @@ struct AddShowView: View {
         addingShowId = result.id
         Task {
             do {
-                try await appState.addShowFromTMDB(searchResult: result, service: tmdbService)
+                try await appState.addShowFromTMDB(searchResult: result, service: tmdbService, destination: destination)
                 dismiss()
             } catch {
                 searchState = .error("Failed to load show: \(error.localizedDescription)")

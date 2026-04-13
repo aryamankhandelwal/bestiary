@@ -2,11 +2,19 @@ import SwiftUI
 
 // MARK: - Supporting Types
 
+private enum BulkMatchStatus {
+    case new
+    case inMyList
+    case inWatchlist
+    case notFound
+}
+
 private struct BulkMatchResult: Identifiable {
     let id = UUID()
     let query: String
     let match: TMDBSearchResult?
     var isSelected: Bool
+    var status: BulkMatchStatus
 }
 
 private enum BulkPhase {
@@ -24,6 +32,7 @@ struct BulkAddView: View {
     @Environment(\.dismiss) private var dismiss
 
     let tmdbService: TMDBService
+    let destination: AddDestination
     let onAdded: () -> Void
 
     @State private var inputText = ""
@@ -31,7 +40,7 @@ struct BulkAddView: View {
     @State private var results: [BulkMatchResult] = []
 
     private var selectedCount: Int {
-        results.filter { $0.isSelected && $0.match != nil }.count
+        results.filter { $0.isSelected && $0.status == .new }.count
     }
 
     var body: some View {
@@ -114,14 +123,32 @@ struct BulkAddView: View {
     // MARK: - Review Phase
 
     private var reviewView: some View {
-        let matchedIndices = results.indices.filter { results[$0].match != nil }
-        let notFoundIndices = results.indices.filter { results[$0].match == nil }
+        let newIndices       = results.indices.filter { results[$0].status == .new }
+        let myListIndices    = results.indices.filter { results[$0].status == .inMyList }
+        let watchlistIndices = results.indices.filter { results[$0].status == .inWatchlist }
+        let notFoundIndices  = results.indices.filter { results[$0].status == .notFound }
 
         return List {
-            if !matchedIndices.isEmpty {
+            if !newIndices.isEmpty {
                 Section("Found") {
-                    ForEach(matchedIndices, id: \.self) { i in
-                        matchedRow(resultIndex: i)
+                    ForEach(newIndices, id: \.self) { i in
+                        selectableRow(resultIndex: i)
+                    }
+                }
+            }
+
+            if !myListIndices.isEmpty {
+                Section("Already in My List") {
+                    ForEach(myListIndices, id: \.self) { i in
+                        alreadyAddedRow(resultIndex: i)
+                    }
+                }
+            }
+
+            if !watchlistIndices.isEmpty {
+                Section("Already in Watchlist") {
+                    ForEach(watchlistIndices, id: \.self) { i in
+                        alreadyAddedRow(resultIndex: i)
                     }
                 }
             }
@@ -150,7 +177,8 @@ struct BulkAddView: View {
         }
     }
 
-    private func matchedRow(resultIndex i: Int) -> some View {
+    // Selectable row for shows not yet added
+    private func selectableRow(resultIndex i: Int) -> some View {
         let match = results[i].match!
         let colorIndex = match.id % Show.palette.count
 
@@ -187,15 +215,47 @@ struct BulkAddView: View {
         }
     }
 
+    // Non-interactive row for shows already in My List or Watchlist
+    private func alreadyAddedRow(resultIndex i: Int) -> some View {
+        let match = results[i].match!
+        let colorIndex = match.id % Show.palette.count
+
+        return HStack(spacing: 14) {
+            Circle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Text(match.name.prefix(1))
+                        .font(.headline.bold())
+                        .foregroundStyle(Color.secondary)
+                }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(match.name)
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                if results[i].query.lowercased() != match.name.lowercased() {
+                    Text("\u{201C}\(results[i].query)\u{201D}")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer()
+        }
+        .opacity(0.6)
+    }
+
     // MARK: - Add Button
 
     private var addButton: some View {
         Button {
-            let selected = results.compactMap { $0.isSelected ? $0.match : nil }
+            let selected = results.compactMap { $0.isSelected && $0.status == .new ? $0.match : nil }
             phase = .adding
             Task {
                 do {
-                    try await appState.addShowsFromTMDB(searchResults: selected, service: tmdbService)
+                    try await appState.addShowsFromTMDB(searchResults: selected, service: tmdbService, destination: destination)
                     dismiss()
                     onAdded()
                 } catch {
@@ -279,16 +339,25 @@ struct BulkAddView: View {
 
     private func findShows(candidates: [String]) async {
         var found: [BulkMatchResult] = []
-        let trackedIds = Set(appState.shows.map { $0.tmdbId })
+        let myListTmdbIds    = Set(appState.myListShows.map { $0.tmdbId })
+        let watchlistTmdbIds = Set(appState.watchlistShows.map { $0.tmdbId })
 
         await withTaskGroup(of: BulkMatchResult.self) { group in
             for candidate in candidates {
                 group.addTask {
                     let searchResults = try? await tmdbService.searchShows(query: candidate)
-                    let pick = searchResults?.first(where: { r in
-                        !trackedIds.contains(r.id)
-                    })
-                    return BulkMatchResult(query: candidate, match: pick, isSelected: pick != nil)
+                    guard let pick = searchResults?.first else {
+                        return BulkMatchResult(query: candidate, match: nil, isSelected: false, status: .notFound)
+                    }
+                    let status: BulkMatchStatus
+                    if myListTmdbIds.contains(pick.id) {
+                        status = .inMyList
+                    } else if watchlistTmdbIds.contains(pick.id) {
+                        status = .inWatchlist
+                    } else {
+                        status = .new
+                    }
+                    return BulkMatchResult(query: candidate, match: pick, isSelected: status == .new, status: status)
                 }
             }
             for await result in group {

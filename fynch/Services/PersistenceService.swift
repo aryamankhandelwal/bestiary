@@ -5,8 +5,9 @@ struct PersistenceService {
     private static let decoder = JSONDecoder()
 
     // Per-user keys
-    private static func showsKey(userId: String)   -> String { "fynch.shows.\(userId).v1" }
-    private static func watchedKey(userId: String) -> String { "fynch.watchedStates.\(userId).v1" }
+    private static func showsKey(userId: String)        -> String { "fynch.shows.\(userId).v1" }
+    private static func watchedKey(userId: String)      -> String { "fynch.watchedStates.\(userId).v1" }
+    private static func watchlistedKey(userId: String)  -> String { "fynch.watchlistedIds.\(userId).v1" }
 
     static func saveShows(_ shows: [Show], userId: String) {
         guard let data = try? encoder.encode(shows) else { return }
@@ -30,6 +31,18 @@ struct PersistenceService {
               let states = try? decoder.decode([String: Bool].self, from: data)
         else { return [:] }
         return states
+    }
+
+    static func saveWatchlistedIds(_ ids: Set<String>, userId: String) {
+        guard let data = try? encoder.encode(Array(ids)) else { return }
+        UserDefaults.standard.set(data, forKey: watchlistedKey(userId: userId))
+    }
+
+    static func loadWatchlistedIds(userId: String) -> Set<String> {
+        guard let data = UserDefaults.standard.data(forKey: watchlistedKey(userId: userId)),
+              let ids  = try? decoder.decode([String].self, from: data)
+        else { return [] }
+        return Set(ids)
     }
 
     // MARK: - Migration (pre-multi-user data)
