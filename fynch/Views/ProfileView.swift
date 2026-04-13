@@ -28,7 +28,7 @@ struct ProfileView: View {
                 // }
                 // #endif
             }
-            .navigationTitle("Profile")
+            .navigationTitle("Bestiary")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

@@ -44,7 +44,7 @@ struct WatchlistView: View {
                     }
                 }
             }
-            .navigationTitle("Watchlist")
+            .navigationTitle("Bestiary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {

@@ -11,7 +11,7 @@ struct LoginView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Text("fynch")
+            Text("Bestiary")
                 .font(.system(size: 48, weight: .bold, design: .default))
                 .foregroundStyle(.primary)
 

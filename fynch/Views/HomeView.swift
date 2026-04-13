@@ -82,7 +82,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationTitle("fynch")
+            .navigationTitle("Bestiary")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Show.self) { show in
                 ShowDetailView(show: show)
