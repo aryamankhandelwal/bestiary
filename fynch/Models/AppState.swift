@@ -179,11 +179,21 @@ final class AppState {
         if remaining == 0 {
             let unaired = unairedEpisodesCount(for: show)
             if unaired > 0 {
+                if isNewSeasonUpcoming(for: show) {
+                    return "New season upcoming"
+                }
                 return "Caught up · \(unaired) left in season"
             }
             return "Caught up"
         }
         return remaining == 1 ? "1 new episode" : "\(remaining) new episodes"
+    }
+
+    private func isNewSeasonUpcoming(for show: Show) -> Bool {
+        guard let nextUnaired = nextUnairedEpisode(for: show),
+              let season = show.seasons.first(where: { $0.seasonNumber == nextUnaired.seasonNumber })
+        else { return false }
+        return !season.episodes.contains(where: { AppState.isAired($0.airDate) })
     }
 
     func nextAirDateLabel(for show: Show) -> String? {

@@ -40,7 +40,7 @@ extension Show {
     var needsRefresh: Bool {
         guard isActivelyAiring else { return false }
         guard let last = lastRefreshedAt else { return true }
-        return Date().timeIntervalSince(last) > 86_400  // 24 hours
+        return Date().timeIntervalSince(last) > 21_600  // 6 hours
     }
 }
 

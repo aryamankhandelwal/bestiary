@@ -82,37 +82,85 @@ struct AddShowView: View {
     // MARK: - Results List
 
     private func resultsList(_ results: [TMDBSearchResult]) -> some View {
-        List(results) { result in
-            HStack(spacing: 14) {
-                let colorIndex = result.id % Show.palette.count
-                Circle()
-                    .fill(Show.palette[colorIndex].gradient)
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        Text(result.name.prefix(1))
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
+        let myListIds = Set(appState.myListShows.map(\.tmdbId))
+        let watchlistIds = Set(appState.watchlistShows.map(\.tmdbId))
+        let newResults = results.filter { !myListIds.contains($0.id) && !watchlistIds.contains($0.id) }
+        let myListResults = results.filter { myListIds.contains($0.id) }
+        let watchlistResults = results.filter { watchlistIds.contains($0.id) }
+
+        return List {
+            ForEach(newResults) { result in
+                addableRow(result)
+            }
+
+            if !myListResults.isEmpty {
+                Section("Already in My List") {
+                    ForEach(myListResults) { result in
+                        alreadyAddedRow(result)
                     }
-
-                Text(result.name)
-                    .font(.msHeadline)
-
-                Spacer()
-
-                if addingShowId == result.id {
-                    ProgressView()
-                } else {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(.blue)
-                        .font(.title2)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard addingShowId == nil else { return }
-                addShow(result)
+
+            if !watchlistResults.isEmpty {
+                Section("Already in Watchlist") {
+                    ForEach(watchlistResults) { result in
+                        alreadyAddedRow(result)
+                    }
+                }
             }
         }
+    }
+
+    private func addableRow(_ result: TMDBSearchResult) -> some View {
+        HStack(spacing: 14) {
+            let colorIndex = result.id % Show.palette.count
+            Circle()
+                .fill(Show.palette[colorIndex].gradient)
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Text(result.name.prefix(1))
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+                }
+
+            Text(result.name)
+                .font(.msHeadline)
+
+            Spacer()
+
+            if addingShowId == result.id {
+                ProgressView()
+            } else {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.blue)
+                    .font(.title2)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard addingShowId == nil else { return }
+            addShow(result)
+        }
+    }
+
+    private func alreadyAddedRow(_ result: TMDBSearchResult) -> some View {
+        HStack(spacing: 14) {
+            Circle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Text(result.name.prefix(1))
+                        .font(.headline.bold())
+                        .foregroundStyle(Color.secondary)
+                }
+
+            Text(result.name)
+                .font(.msHeadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .opacity(0.6)
     }
 
     // MARK: - Search
@@ -130,10 +178,7 @@ struct AddShowView: View {
             guard !Task.isCancelled else { return }
             do {
                 let results = try await tmdbService.searchShows(query: trimmed)
-                let filtered = results.filter { r in
-                    !appState.shows.contains { $0.tmdbId == r.id }
-                }
-                searchState = .loaded(filtered)
+                searchState = .loaded(results)
             } catch {
                 searchState = .error(error.localizedDescription)
             }
