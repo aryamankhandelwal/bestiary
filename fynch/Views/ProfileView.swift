@@ -20,28 +20,35 @@ struct ProfileView: View {
 
                 if appState.currentUsername == "arya" {
                     Section {
-                        Button(role: .destructive) {
+                        Button {
                             showClearFeedConfirmation = true
                         } label: {
                             Label("Clear Feed", systemImage: "trash")
+                                .foregroundStyle(.red)
+                        }
+                        .popover(isPresented: $showClearFeedConfirmation) {
+                            VStack(spacing: 16) {
+                                Text("Clear All Feed Activity")
+                                    .font(.headline)
+                                Text("This removes all feed activity for every user. This cannot be undone.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                Button("Clear", role: .destructive) {
+                                    showClearFeedConfirmation = false
+                                    socialStore.clearAllFeeds()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.red)
+                            }
+                            .padding()
+                            .presentationCompactAdaptation(.popover)
                         }
                     }
                 }
             }
             .navigationTitle("Bestiary")
             .navigationBarTitleDisplayMode(.inline)
-        }
-        .confirmationDialog(
-            "Clear All Feed Activity",
-            isPresented: $showClearFeedConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Clear", role: .destructive) {
-                socialStore.clearAllFeeds()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This removes all feed activity for every user. This cannot be undone.")
         }
     }
 
