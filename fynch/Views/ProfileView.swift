@@ -18,6 +18,7 @@ struct ProfileView: View {
                     }
                 }
 
+                #if DEBUG
                 if appState.currentUsername == "arya" {
                     Section {
                         Button {
@@ -46,6 +47,7 @@ struct ProfileView: View {
                         }
                     }
                 }
+                #endif
             }
             .navigationTitle("Bestiary")
             .navigationBarTitleDisplayMode(.inline)
