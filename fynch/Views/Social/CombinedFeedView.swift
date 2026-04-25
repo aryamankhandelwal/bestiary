@@ -42,7 +42,11 @@ struct CombinedFeedView: View {
 
             let distinctShows = Set(sessionEvents.map { $0.showName })
             let additionalShowCount = max(0, distinctShows.count - 1)
-            result.append((event: event, additionalShowCount: additionalShowCount))
+            // Pick the show with the most episodes watched as the primary display event
+            let primaryEvent = sessionEvents.reduce(sessionEvents[0]) { best, current in
+                (current.episodeCount ?? 1) > (best.episodeCount ?? 1) ? current : best
+            }
+            result.append((event: primaryEvent, additionalShowCount: additionalShowCount))
         }
         return result
     }

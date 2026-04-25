@@ -80,20 +80,44 @@ final class SocialStore {
     ) {
         let event: FeedEvent
         if count == 1 {
-            let type: FeedEventType
+            let newType: FeedEventType
             if isFirstEpisodeOfShow {
-                type = .started
+                newType = .started
             } else if isLastOfShow {
-                type = .finishedShow
+                newType = .finishedShow
             } else if isLastOfSeason {
-                type = .finishedSeason
+                newType = .finishedSeason
             } else {
-                type = .watchedEpisode
+                newType = .watchedEpisode
             }
+
+            // For plain episode watches, merge into any recent event for the same user+show
+            if newType == .watchedEpisode,
+               let idx = feedEvents.firstIndex(where: { ev in
+                   ev.username == username &&
+                   ev.showName == showName &&
+                   (ev.type == .watchedEpisode || ev.type == .watchedBatch || ev.type == .started) &&
+                   Date().timeIntervalSince(ev.timestamp) < 300
+               }) {
+                if feedEvents[idx].type == .watchedBatch {
+                    feedEvents[idx].episodeCount = (feedEvents[idx].episodeCount ?? 1) + 1
+                } else {
+                    feedEvents[idx].type = .watchedBatch
+                    feedEvents[idx].episodeCount = 2
+                }
+                encode(feedEvents, to: Keys.feed)
+                let updatedEvent = feedEvents[idx]
+                let token = currentIdToken
+                if let svc = socialSyncService {
+                    Task { await svc.saveFeedEvent(updatedEvent, idToken: token) }
+                }
+                return
+            }
+
             event = FeedEvent(
                 id: UUID(),
                 username: username,
-                type: type,
+                type: newType,
                 showName: showName,
                 episodeCount: nil,
                 episodeTitle: lastEpisodeTitle,

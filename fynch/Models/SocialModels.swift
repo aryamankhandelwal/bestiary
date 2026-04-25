@@ -3,7 +3,7 @@ import Foundation
 struct FeedEvent: Codable, Identifiable {
     let id: UUID
     let username: String
-    let type: FeedEventType
+    var type: FeedEventType
     let showName: String
     var episodeCount: Int?
     let episodeTitle: String?
